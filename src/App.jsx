@@ -206,6 +206,7 @@ export default function App() {
   const [isFlipped, setIsFlipped] = useState(false);
   
   const [quizPending, setQuizPending] = useState(null); 
+  const [quizType, setQuizType] = useState('words');
   const [isQuizMode, setIsQuizMode] = useState(false);
   const [quizScore, setQuizScore] = useState(100);
   const [quizMistakes, setQuizMistakes] = useState({});
@@ -340,20 +341,36 @@ export default function App() {
     return [...new Set(opts)];
   };
 
-  const generateOptionsForCard = (index, currentDeck) => {
+  // 🔥 優化選項生成邏輯：只篩選同類別，或單字長度相似的答案 🔥
+  const generateOptionsForCard = (index, currentDeck, overrideType) => {
+    const typeToUse = overrideType || quizType;
     const correctWord = currentDeck[index];
     if (!correctWord) return;
     
     let correctOpt = correctWord.zh; 
     let pool = [];
 
-    const isAlphabet = !correctWord.ex && correctWord.bpmf;
-
-    if (isAlphabet) {
-      pool = ALPHABET_DATA.flatMap(d => d.data).map(item => item.bpmf || `發音：${item.pro}`);
+    if (typeToUse === 'vowels') {
+      pool = HANGUL_BASIC.vowels.map(v => v.bpmf);
+    } else if (typeToUse === 'consonants') {
+      pool = HANGUL_BASIC.consonants.map(c => c.bpmf);
+    } else if (typeToUse === 'combos') {
+      pool = comboCards.map(c => c.bpmf);
+    } else if (typeToUse === 'struct3') {
+      pool = STRUCT_3.map(c => c.bpmf);
+    } else if (typeToUse === 'struct4') {
+      pool = STRUCT_4.map(c => c.bpmf);
+    } else if (typeToUse === 'struct5') {
+      pool = STRUCT_5.map(c => c.bpmf);
     } else {
-      pool = BUILTIN_DECKS.flatMap(d => d.words).map(w => w[2]); 
-      currentDeck.forEach(w => { if (!pool.includes(w.zh)) pool.push(w.zh); });
+      // 處理單字 (中文選項)
+      const allWordsZh = BUILTIN_DECKS.flatMap(d => d.words).map(w => w[2]); 
+      currentDeck.forEach(w => { if (!allWordsZh.includes(w.zh)) allWordsZh.push(w.zh); });
+      
+      // 取字數長度相差不超過 2 的選項，增加誤答率
+      const targetLen = correctOpt.length;
+      pool = allWordsZh.filter(zh => Math.abs(zh.length - targetLen) <= 2);
+      if (pool.length < 5) pool = allWordsZh; // 備用防呆
     }
 
     if (!pool.includes(correctOpt)) pool.push(correctOpt);
@@ -417,6 +434,7 @@ export default function App() {
       
       setQuizPending({
         pool: newWords, count: newWords.length,
+        type: 'words',
         title: inputMode === 'topic' ? `AI主題：${topic}` : 'AI自訂單字',
         fromView: 'home'
       });
@@ -475,6 +493,7 @@ export default function App() {
 
     setWords(deck);
     setCurrentDeckTitle(title);
+    setQuizType(type);
     setIsQuizMode(true);
     setReturnView(fromView);
     setQuizScore(100);
@@ -482,7 +501,7 @@ export default function App() {
     setCurrentIndex(0);
     setAnsweredCorrectly(false);
     setSelectedWrongOptions([]);
-    generateOptionsForCard(0, deck);
+    generateOptionsForCard(0, deck, type);
     
     setIsAlphabetLearnMode(false);
     setIsFlipped(false);
@@ -513,7 +532,7 @@ export default function App() {
       const shuffled = [...remaining].sort(() => Math.random() - 0.5);
       const newDeck = [...past, ...shuffled];
       setWords(newDeck);
-      if (isQuizMode) generateOptionsForCard(currentIndex, newDeck);
+      if (isQuizMode) generateOptionsForCard(currentIndex, newDeck, quizType);
     }, 150);
   };
 
@@ -548,7 +567,7 @@ export default function App() {
             setQuizFinished(true);
         } else {
             setCurrentIndex(nextIndex % currentDeck.length);
-            if (isQuizMode) generateOptionsForCard(nextIndex, currentDeck);
+            if (isQuizMode) generateOptionsForCard(nextIndex, currentDeck, quizType);
         }
     }, 150);
   };
@@ -773,16 +792,20 @@ export default function App() {
                         <button onClick={(e) => handleSRS('hard', e)} className="bg-orange-500 hover:bg-orange-600 text-white py-2 md:py-3 rounded-xl flex flex-col items-center justify-center shadow-sm active:scale-95 transition-all">
                           <span className="font-black text-sm md:text-base">HARD</span>
                         </button>
+                        
+                        {/* 中央的大喇叭按鈕：若無例句負責唸單字，有例句負責唸例句 */}
                         <button onClick={(e) => speak(hasSentence ? currentWord.ex : currentWord.ko, e)} className="bg-indigo-500 hover:bg-indigo-600 text-white py-2 md:py-3 rounded-xl flex flex-col items-center justify-center shadow-sm active:scale-95 transition-all">
                           <Volume2 className="w-5 h-5 md:w-6 md:h-6" />
                         </button>
+
                         <button onClick={(e) => handleSRS('good', e)} className="bg-green-500 hover:bg-green-600 text-white py-2 md:py-3 rounded-xl flex flex-col items-center justify-center shadow-sm active:scale-95 transition-all">
                           <span className="font-black text-sm md:text-base">GOOD</span>
                         </button>
+                        {/* 防呆機制：答錯過這題就不能按 EASY */}
                         <button 
                           onClick={(e) => handleSRS('easy', e)} 
-                          disabled={quizMistakes[currentWord.ko]}
-                          className={`py-2 md:py-3 rounded-xl flex flex-col items-center justify-center shadow-sm transition-all ${quizMistakes[currentWord.ko] ? 'bg-slate-400 text-slate-200 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white active:scale-95'}`}
+                          disabled={isQuizMode && quizMistakes[currentWord.ko]}
+                          className={`py-2 md:py-3 rounded-xl flex flex-col items-center justify-center shadow-sm transition-all ${isQuizMode && quizMistakes[currentWord.ko] ? 'bg-slate-400 text-slate-200 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white active:scale-95'}`}
                         >
                           <span className="font-black text-sm md:text-base">EASY</span>
                         </button>
