@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
-import { Sparkles, Play, ChevronLeft, ChevronRight, Bookmark, BookmarkCheck, Library, GraduationCap, Loader2, RotateCcw, Type, Puzzle, Shuffle, Layers, RefreshCw, BookOpen } from 'lucide-react';
+import { Sparkles, Play, Volume2, ChevronLeft, ChevronRight, Loader2, RotateCcw, Type, Puzzle, Shuffle, Layers, RefreshCw, BookOpen, ArrowLeft } from 'lucide-react';
 
 // ==========================================
 // 韓文基礎發音資料 (依據 Vocus 教學順序與注音輔助)
@@ -38,7 +37,6 @@ const HANGUL_BASIC = {
   ]
 };
 
-// 組合機邏輯
 const CHOSUNG_MAP = { "ㄱ": 0, "ㄲ": 1, "ㄴ": 2, "ㄷ": 3, "ㄸ": 4, "ㄹ": 5, "ㅁ": 6, "ㅂ": 7, "ㅃ": 8, "ㅅ": 9, "ㅆ": 10, "ㅇ": 11, "ㅈ": 12, "ㅉ": 13, "ㅊ": 14, "ㅋ": 15, "ㅌ": 16, "ㅍ": 17, "ㅎ": 18 };
 const JUNGSUNG_MAP = { "ㅏ": 0, "ㅐ": 1, "ㅑ": 2, "ㅒ": 3, "ㅓ": 4, "ㅔ": 5, "ㅕ": 6, "ㅖ": 7, "ㅗ": 8, "ㅘ": 9, "ㅙ": 10, "ㅚ": 11, "ㅛ": 12, "ㅜ": 13, "ㅝ": 14, "ㅞ": 15, "ㅟ": 16, "ㅠ": 17, "ㅡ": 18, "ㅢ": 19, "ㅣ": 20 };
 const combineHangul = (c, v) => {
@@ -185,7 +183,7 @@ const BUILTIN_DECKS = [
     ["호텔", "hotel", "飯店", "호텔을 예약하다.", "預訂飯店。", "外來語 Hotel。", "a luxury hotel building with an entrance"]
   ]),
   buildDeck("購物金錢", "🛒", [
-    ["돈", "don", "錢", "돈이 없다.", "沒有錢。", "發音『洞』。把錢塞進無底洞。", "a stack of cash and coins"],
+    ["돈", "don", "钱", "돈이 없다.", "沒有錢。", "發音『洞』。把錢塞進無底洞。", "a stack of cash and coins"],
     ["얼마예요?", "eolmayeyo?", "多少錢？", "이거 얼마예요?", "這個多少錢？", "얼마(多少) + 예요(是)。", "a price tag with a question mark"],
     ["비싸요", "bissayo", "很貴", "너무 비싸요.", "太貴了。", "비싸다 的敬語形式。", "a luxury bag with a very high price tag"],
     ["깎아주세요", "kkakkajuseyo", "請算便宜一點", "조금만 깎아주세요.", "請算便宜一點點。", "깎다(削/剪/砍價) + 주세요(請給我)。", "person politely bargaining at a market"],
@@ -231,7 +229,7 @@ const BUILTIN_DECKS = [
     ["컴퓨터", "keompyuteo", "電腦", "컴퓨터가 고장 났어요.", "電腦壞了。", "外來語 Computer。", "a modern desktop computer set up"],
     ["복사기", "boksagi", "影印機", "복사기를 사용하다.", "使用影印機。", "漢字「複寫機」。", "an office photocopier printing documents"],
     ["휴가", "hyuga", "休假", "여름 휴가를 가다.", "去放暑假。", "漢字「休假」。", "a person relaxing on a beach chair"],
-    ["월급", "wolgeup", "月薪", "월급날이에요.", "今天是發薪日。", "漢字「月給」。", "an envelope with money and a calendar"],
+    ["월급", "wolgeup", "月薪", "월급날리에요.", "今天是發薪日。", "漢字「月給」。", "an envelope with money and a calendar"],
     ["면접", "myeonjeop", "面試", "면접을 보다.", "去面試。", "漢字「面接」。", "a job interview with two people talking"],
     ["회식", "hoesik", "聚餐", "오늘 저녁에 회식이 있어요.", "今天晚上有聚餐。", "漢字「會食」。", "coworkers clinking glasses at a dinner party"]
   ]),
@@ -272,7 +270,7 @@ const BUILTIN_DECKS = [
 ];
 
 // ==========================================
-// 1. Firebase 初始化 (雙環境智慧切換)
+// 1. Firebase 初始化
 // ==========================================
 let app, auth, db;
 const myFirebaseConfig = {
@@ -287,18 +285,16 @@ const myFirebaseConfig = {
 
 const isCanvasEnv = typeof __firebase_config !== 'undefined' && __firebase_config;
 const finalFirebaseConfig = isCanvasEnv ? JSON.parse(__firebase_config) : myFirebaseConfig;
-const finalAppId = isCanvasEnv && typeof __app_id !== 'undefined' ? __app_id : 'korea-card';
 
 try {
   app = initializeApp(finalFirebaseConfig);
   auth = getAuth(app);
-  db = getFirestore(app);
 } catch (error) {
   console.warn("Firebase 初始化跳過:", error);
 }
 
 export default function App() {
-  // 動態注入 Tailwind CSS
+  // 動態注入 Tailwind 與防滾動 CSS
   useEffect(() => {
     if (!document.getElementById('tailwind-cdn')) {
       const script = document.createElement('script');
@@ -306,29 +302,43 @@ export default function App() {
       script.src = 'https://cdn.tailwindcss.com';
       document.head.appendChild(script);
     }
+    if (!document.getElementById('custom-styles')) {
+      const style = document.createElement('style');
+      style.id = 'custom-styles';
+      style.innerHTML = `
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .custom-scrollbar::-webkit-scrollbar { height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+      `;
+      document.head.appendChild(style);
+    }
   }, []);
 
   // ==========================================
   // 2. 狀態管理
   // ==========================================
-  const [user, setUser] = useState(null);
-  const [authError, setAuthError] = useState(''); 
-  const [view, setView] = useState('learn'); // 預設改回學習區
-  const [activeLetter, setActiveLetter] = useState(null); 
+  // view 狀態: 'home' (首頁) | 'alphabet' (發音區) | 'flashcard' (字卡區)
+  const [view, setView] = useState('home'); 
   
-  // 將預設單字設為內建單元 1 的內容
+  // 字卡相關狀態
   const [words, setWords] = useState(BUILTIN_DECKS[0].words);
-  const [savedWords, setSavedWords] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
-  const [topic, setTopic] = useState('自訂主題輸入...'); // AI 擴充用
+  
+  // 輸入模式與狀態
+  const [inputMode, setInputMode] = useState('topic'); 
+  const [topic, setTopic] = useState(''); 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // 基礎發音區狀態
+  const [activeLetter, setActiveLetter] = useState(null); 
   const [alphabetMode, setAlphabetMode] = useState('flashcards'); 
   const [selectedC, setSelectedC] = useState(HANGUL_BASIC.consonants[0]); 
   const [selectedV, setSelectedV] = useState(HANGUL_BASIC.vowels[0]);     
-
   const [comboCards, setComboCards] = useState([]);
   const [comboIndex, setComboIndex] = useState(0);
   const [comboFlipped, setComboFlipped] = useState(false);
@@ -337,86 +347,106 @@ export default function App() {
     setComboCards(generateAllCombos());
   }, []);
 
-  // ==========================================
-  // 3. 雲端連線 (Firebase Auth)
-  // ==========================================
+  // Firebase 匿名登入 (確保 Vercel 環境運作)
   useEffect(() => {
     if (!auth) return;
     const initAuth = async () => {
       try {
-        setAuthError('');
         if (isCanvasEnv && typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
           await signInWithCustomToken(auth, __initial_auth_token);
         } else {
           await signInAnonymously(auth);
         }
       } catch (err) {
-        if (err.code === 'auth/admin-restricted-operation' || err.code === 'auth/operation-not-allowed') {
-           setAuthError("⚠️ 儲存功能已暫停：請至您的 Firebase Console > Authentication > Sign-in method，啟用「匿名登入 (Anonymous)」！");
-        }
+        console.warn("Firebase Auth 跳過:", err.message);
       }
     };
     initAuth();
-    const unsubscribe = onAuthStateChanged(auth, setUser);
-    return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (!user || !db) return;
-    const wordsRef = collection(db, 'artifacts', finalAppId, 'users', user.uid, 'saved_korean_words');
-    const unsubscribe = onSnapshot(wordsRef, (snapshot) => {
-      const saved = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setSavedWords(saved);
-    });
-    return () => unsubscribe();
-  }, [user]);
-
   // ==========================================
-  // 4. 功能函式 (AI 擴充、載入內建單元、語音、翻卡)
+  // 3. 功能函式 (AI 擴充、載入單元、語音、翻卡)
   // ==========================================
   const generateWords = async () => {
     if (!topic.trim()) return;
     setLoading(true);
     setErrorMsg('');
 
-    const promptText = `你是一位專業的韓文教師。請根據主題「${topic}」生成 5 個實用的韓文單字或短語。
-    請嚴格以 JSON 陣列格式回傳。每個物件必須包含：
-    - ko: 韓文單字或短語
-    - pro: 羅馬拼音
-    - zh: 繁體中文意思
-    - ex: 韓文例句
-    - exZh: 繁體中文翻譯
-    - memoryHook: 字根拆解或意象化聯想(幫助邏輯記憶)
-    - imagePrompt: 一段簡短的英文畫面描述`;
+    let promptText = "";
+    if (inputMode === 'topic') {
+      promptText = `你是一位專業的韓文教師。請根據主題「${topic}」生成 5 個實用的韓文單字或短語。
+      請嚴格以 JSON 陣列格式回傳。每個物件必須包含：
+      - ko: 韓文單字或短語
+      - pro: 羅馬拼音
+      - zh: 繁體中文意思
+      - ex: 韓文例句
+      - exZh: 繁體中文翻譯
+      - memoryHook: 複合漢字拆解或意象化聯想(幫助邏輯記憶，非常重要！)
+      - imagePrompt: 一段簡短的英文畫面描述`;
+    } else {
+      promptText = `你是一位專業的韓文教師。請針對以下單字或句子清單：「${topic}」（可能是中文、英文或韓文），將它們精準翻譯並轉換成標準的韓文單字卡。
+      請嚴格以 JSON 陣列格式回傳。每一個輸入都要生成一個對應的物件，包含：
+      - ko: 翻譯後的韓文單字或短語
+      - pro: 羅馬拼音
+      - zh: 繁體中文意思
+      - ex: 實用的韓文例句
+      - exZh: 例句的繁體中文翻譯
+      - memoryHook: 複合漢字拆解或意象化聯想(幫助邏輯記憶，非常重要！)
+      - imagePrompt: 一段簡短的英文畫面描述`;
+    }
 
     try {
-      const response = await fetch('/api/generate', {
+      const apiKey = ""; 
+      
+      // 🔥 雙環境 API 自動切換機制 🔥
+      const apiUrl = isCanvasEnv 
+        ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`
+        : '/api/generate';
+        
+      const requestBody = isCanvasEnv
+        ? {
+            contents: [{ parts: [{ text: promptText }] }],
+            generationConfig: { responseMimeType: "application/json" }
+          }
+        : { prompt: promptText };
+
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: promptText })
+        body: JSON.stringify(requestBody)
       });
-
-      if (!response.ok) throw new Error("API 請求失敗");
+      
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`API 請求失敗 (${response.status})`);
+      }
+      
       const data = await response.json();
       const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
       
-      const newWords = JSON.parse(textContent);
+      if (!textContent) throw new Error("AI 沒有回傳內容");
+
+      // 🛡️ 預防 AI 偷塞 Markdown 標籤導致 JSON 解析崩潰
+      const cleanedText = textContent.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const newWords = JSON.parse(cleanedText);
+      
       setWords(newWords);
       setCurrentIndex(0);
       setIsFlipped(false);
-      setView('learn');
+      setView('flashcard'); // 生成完切換至沉浸式卡片模式
     } catch (err) {
-      setErrorMsg("生成失敗，可能是尚未部署 Vercel 後端 API。");
+      console.error("生成錯誤:", err);
+      setErrorMsg(`生成失敗：${err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // 載入內建單元
   const loadBuiltinDeck = (deck) => {
     setWords(deck.words);
     setCurrentIndex(0);
     setIsFlipped(false);
+    setView('flashcard'); // 點選題庫切換至沉浸式卡片模式
   };
 
   const speak = (text, e) => {
@@ -429,9 +459,24 @@ export default function App() {
 
   const nextCard = () => { setIsFlipped(false); setTimeout(() => setCurrentIndex((p) => (p + 1) % words.length), 150); };
   const prevCard = () => { setIsFlipped(false); setTimeout(() => setCurrentIndex((p) => (p - 1 + words.length) % words.length), 150); };
+  
+  // SRS 間隔重複邏輯
+  const handleSRS = (rating, e) => {
+    if (e) e.stopPropagation();
+    let newWordsLength = words.length;
+    // 如果困難，複製一張到牌組最後面強制複習
+    if (rating === 'again' || rating === 'hard') {
+      setWords(prev => [...prev, words[currentIndex]]);
+      newWordsLength += 1;
+    }
+    setIsFlipped(false);
+    setTimeout(() => {
+      setCurrentIndex((prev) => (prev + 1) % newWordsLength);
+    }, 150);
+  };
+
   const nextCombo = () => { setComboFlipped(false); setTimeout(() => setComboIndex(p => (p + 1) % comboCards.length), 150); };
   const prevCombo = () => { setComboFlipped(false); setTimeout(() => setComboIndex(p => (p - 1 + comboCards.length) % comboCards.length), 150); };
-  
   const shuffleCombos = () => {
     setComboFlipped(false);
     setTimeout(() => {
@@ -448,394 +493,373 @@ export default function App() {
     }, 150);
   };
 
-  const toggleSaveWord = async (word, e) => {
-    if (e) e.stopPropagation();
-    if (!user || !db) return;
-    const wordId = word.ko; 
-    const docRef = doc(db, 'artifacts', finalAppId, 'users', user.uid, 'saved_korean_words', wordId);
-    try {
-      const isSaved = savedWords.some(w => w.id === wordId);
-      if (isSaved) await deleteDoc(docRef);
-      else await setDoc(docRef, { ...word, savedAt: new Date().toISOString() });
-    } catch (err) { console.error("儲存失敗:", err); }
-  };
-
   const currentWord = words[currentIndex] || {};
-  const isCurrentSaved = savedWords.some(w => w.id === currentWord.ko);
   const currentCombo = comboCards[comboIndex] || {};
 
   // ==========================================
-  // 6. UI 渲染
+  // 6. UI 渲染 (極簡首頁 + 沉浸式字卡模式)
   // ==========================================
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans selection:bg-indigo-200">
-      {/* 頂部導航列 */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 h-20 flex items-center justify-between overflow-x-auto hide-scrollbar">
-          <div className="flex items-center gap-2 text-indigo-600 shrink-0 mr-4">
-            <Sparkles className="w-8 h-8" />
-            <h1 className="text-2xl font-bold tracking-tight">Killer Cards <span className="text-slate-400 text-base font-medium ml-1">韓文</span></h1>
+      
+      {/* 🌟 1. 沉浸式單字卡模式 (滿版顯示，帶返回鍵) 🌟 */}
+      {view === 'flashcard' && (
+        <div className="flex flex-col items-center w-full min-h-screen bg-slate-50 pt-6 px-4 pb-12">
+          {/* 左上角返回按鈕 */}
+          <div className="w-full max-w-md mx-auto flex items-center justify-start mb-6">
+            <button onClick={() => setView('home')} className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-bold bg-white px-4 py-2 rounded-xl shadow-sm active:scale-95 transition-all">
+              <ArrowLeft className="w-5 h-5" /> 返回首頁
+            </button>
           </div>
-          <div className="flex gap-2 bg-slate-100 p-1.5 rounded-xl shrink-0">
-            <button onClick={() => setView('learn')} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-base font-bold transition-colors ${view === 'learn' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-600 hover:text-slate-900'}`}>
-              <GraduationCap className="w-5 h-5" /> 學習區
-            </button>
-            <button onClick={() => setView('alphabet')} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-base font-bold transition-colors ${view === 'alphabet' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-600 hover:text-slate-900'}`}>
-              <Type className="w-5 h-5" /> 基礎發音
-            </button>
-            <button onClick={() => setView('vault')} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-base font-bold transition-colors ${view === 'vault' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-600 hover:text-slate-900'}`}>
-              <Library className="w-5 h-5" /> 單字庫
-              {savedWords.length > 0 && <span className="bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full text-sm">{savedWords.length}</span>}
-            </button>
+
+          <div className="w-full max-w-md perspective-1000">
+            <div 
+              className="relative w-full h-[28rem] md:h-[30rem] transition-transform duration-500 ease-out cursor-pointer" 
+              style={{ transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }} 
+              // 🔥 防止在背面時誤觸轉回正面 🔥
+              onClick={() => { if (!isFlipped) setIsFlipped(true); }}
+            >
+              
+              {/* 正面 */}
+              <div className="absolute inset-0 bg-white shadow-2xl rounded-[2.5rem] flex flex-col overflow-hidden border-2 border-slate-100" style={{ backfaceVisibility: 'hidden' }}>
+                <div className="relative w-full h-[35%] bg-slate-100 shrink-0">
+                  {currentWord.imagePrompt && <img src={`https://image.pollinations.ai/prompt/${encodeURIComponent(currentWord.imagePrompt)}?width=800&height=600&nologo=true`} alt="AI generated" className="w-full h-full object-cover" loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} />}
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
+                  <span className="absolute top-5 left-5 text-white font-bold tracking-widest text-sm uppercase drop-shadow-md">{currentIndex + 1} / {words.length}</span>
+                </div>
+                <div className="flex-1 flex flex-col items-center justify-center p-6 relative">
+                  <h2 className="text-[4rem] font-black text-slate-800 mb-3 tracking-tighter text-center leading-tight break-words w-full">{currentWord.ko}</h2>
+                  <p className="text-slate-500 font-mono text-2xl mb-6 bg-slate-100 px-5 py-1.5 rounded-full font-bold">{currentWord.pro}</p>
+                  <button onClick={(e) => speak(currentWord.ko, e)} className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center hover:bg-indigo-100 hover:scale-105 transition-all active:scale-95 group shrink-0 shadow-sm">
+                    <Play className="w-8 h-8 fill-current translate-x-1 group-hover:text-indigo-700" />
+                  </button>
+                </div>
+              </div>
+
+              {/* 背面 (整合了單念喇叭鈕與 SRS 記憶按鈕) */}
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 to-blue-800 shadow-2xl rounded-[2.5rem] flex flex-col p-6 text-white" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
+                <div className="flex-1 overflow-y-auto hide-scrollbar flex flex-col justify-start">
+                  <div className="flex flex-col mb-4 border-b border-white/20 pb-4 shrink-0">
+                    <div className="flex items-center gap-3 mb-1">
+                      <h3 className="text-4xl md:text-5xl font-black text-white leading-tight">{currentWord.ko}</h3>
+                      {/* 🔥 背面單念韓文獨立喇叭按鈕 🔥 */}
+                      <button onClick={(e) => speak(currentWord.ko, e)} className="bg-white/20 hover:bg-white/30 p-3 rounded-full transition-colors active:scale-95 shadow-sm">
+                        <Volume2 className="w-6 h-6 text-white" />
+                      </button>
+                    </div>
+                    <p className="text-indigo-200 text-xl font-mono mb-3">{currentWord.pro}</p>
+                    <h4 className="text-3xl font-bold text-amber-300 drop-shadow-sm">{currentWord.zh}</h4>
+                  </div>
+                  
+                  {currentWord.memoryHook && (
+                    <div className="bg-white/10 rounded-2xl p-4 mb-4 border border-white/20 shadow-inner shrink-0">
+                      <p className="text-sm text-indigo-200 uppercase tracking-wider mb-1 font-bold flex items-center gap-2">💡 意象化拆解</p>
+                      <p className="text-lg leading-relaxed font-medium">{currentWord.memoryHook}</p>
+                    </div>
+                  )}
+                  <div className="space-y-3 shrink-0 pb-4">
+                    <p className="text-indigo-200 text-sm uppercase tracking-wider font-bold">例句</p>
+                    <div className="flex items-start gap-3 bg-white/5 p-4 rounded-2xl border border-white/10">
+                      <div className="flex-1">
+                        <p className="text-xl font-bold leading-relaxed mb-2">{currentWord.ex}</p>
+                        <p className="text-sm text-indigo-200/90 font-medium">{currentWord.exZh}</p>
+                      </div>
+                      <button onClick={(e) => speak(currentWord.ex, e)} className="shrink-0 text-indigo-300 hover:text-white transition-colors bg-white/10 p-3 rounded-full active:scale-95"><Play className="w-5 h-5 fill-current" /></button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 內建 SRS 記憶控制列 */}
+                <div className="pt-3 border-t border-white/20 grid grid-cols-4 gap-2 shrink-0">
+                  <button onClick={(e) => handleSRS('again', e)} className="bg-red-500 hover:bg-red-600 text-white py-3 rounded-xl flex flex-col items-center justify-center shadow-sm active:scale-95 transition-all">
+                    <span className="font-black text-sm md:text-base">AGAIN</span>
+                    <span className="text-[10px] font-medium opacity-90 mt-0.5">重來</span>
+                  </button>
+                  <button onClick={(e) => handleSRS('hard', e)} className="bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-xl flex flex-col items-center justify-center shadow-sm active:scale-95 transition-all">
+                    <span className="font-black text-sm md:text-base">HARD</span>
+                    <span className="text-[10px] font-medium opacity-90 mt-0.5">困難</span>
+                  </button>
+                  <button onClick={(e) => handleSRS('good', e)} className="bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl flex flex-col items-center justify-center shadow-sm active:scale-95 transition-all">
+                    <span className="font-black text-sm md:text-base">GOOD</span>
+                    <span className="text-[10px] font-medium opacity-90 mt-0.5">普通</span>
+                  </button>
+                  <button onClick={(e) => handleSRS('easy', e)} className="bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl flex flex-col items-center justify-center shadow-sm active:scale-95 transition-all">
+                    <span className="font-black text-sm md:text-base">EASY</span>
+                    <span className="text-[10px] font-medium opacity-90 mt-0.5">簡單</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* 正面專用的左右翻轉與提示 */}
+            <div className={`flex items-center justify-between mt-5 px-2 transition-opacity duration-300 w-full max-w-md ${isFlipped ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+              <button onClick={prevCard} className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-all bg-white shadow-sm border border-slate-100 active:scale-95"><ChevronLeft className="w-6 h-6" /></button>
+              <p className="text-slate-400 font-bold tracking-widest text-xs bg-slate-100 px-4 py-2 rounded-full">點擊卡片翻開看答案</p>
+              <button onClick={nextCard} className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-all bg-white shadow-sm border border-slate-100 active:scale-95"><ChevronRight className="w-6 h-6" /></button>
+            </div>
           </div>
         </div>
-      </header>
+      )}
 
-      <main className="max-w-4xl mx-auto px-4 py-8 pb-24">
-
-        {authError && (
-          <div className="w-full bg-red-50 text-red-600 p-5 rounded-[1.5rem] border-2 border-red-200 mb-8 font-bold flex flex-col md:flex-row items-center md:items-start gap-4 shadow-sm">
-            <span className="text-3xl shrink-0">🚨</span>
-            <p className="leading-relaxed text-lg">{authError}</p>
+      {/* 🌟 2. 主畫面 (極簡排版：只有標題與輸入區) 🌟 */}
+      {(view === 'home' || view === 'alphabet') && (
+        <>
+          {/* 秘密標題按鈕：點擊標題切換 首頁/基礎發音 */}
+          <div 
+            className="w-full flex flex-col items-center pt-8 pb-6 cursor-pointer group select-none"
+            onClick={() => setView(view === 'alphabet' ? 'home' : 'alphabet')}
+          >
+             <Sparkles className="w-10 h-10 text-amber-400 mb-2 drop-shadow-sm group-hover:scale-110 transition-transform" />
+             <div className="relative inline-block">
+                <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-slate-800 group-hover:text-indigo-600 transition-colors">Korea Cards</h1>
+                <span className="absolute -right-8 -top-3 text-[11px] md:text-xs font-black text-white bg-indigo-600 px-2 py-0.5 rounded-full shadow-sm transform rotate-12">韓文</span>
+             </div>
+             <p className="text-[10px] text-slate-400 mt-2 font-bold tracking-widest">( 點擊標題切換 基礎發音/首頁 )</p>
           </div>
-        )}
-        
-        {/* === 學習區 (內建單元 + AI 擴充) === */}
-        {view === 'learn' && (
-          <div className="flex flex-col items-center">
+
+          <main className="max-w-4xl mx-auto px-4 pb-12">
             
-            {/* 1. 保留輸入單字擴充的位置 */}
-            <div className="w-full max-w-lg bg-white p-4 rounded-[1.5rem] shadow-sm border border-slate-200 mb-6 flex gap-3">
-              <input type="text" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="AI 擴充：輸入想學的冷門主題..." className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-lg text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium" onKeyDown={(e) => e.key === 'Enter' && generateWords()} />
-              <button onClick={generateWords} disabled={loading} className="bg-indigo-600 text-white px-6 md:px-8 py-4 rounded-2xl font-bold text-lg hover:bg-indigo-700 active:scale-95 transition-all disabled:opacity-70 flex items-center gap-2 whitespace-nowrap">
-                {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Sparkles className="w-6 h-6" />}
-                {loading ? '生成中...' : <span className="hidden md:inline">AI 擴充</span>}
-              </button>
-            </div>
-            {errorMsg && <p className="text-red-500 text-lg font-medium mb-4">{errorMsg}</p>}
-
-            {/* 2. 🔥 新增：內建十個單元水平捲動列表 🔥 */}
-            <div className="w-full max-w-lg mb-10">
-              <div className="flex items-center justify-between mb-3 px-2">
-                <h3 className="font-bold text-slate-600 flex items-center gap-2 text-lg">
-                  <BookOpen className="w-5 h-5 text-indigo-500"/> 核心題庫直接背
-                </h3>
-                <span className="text-xs font-bold text-indigo-500 bg-indigo-50 px-2 py-1 rounded-md">左右滑動切換</span>
-              </div>
-              <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar snap-x px-2">
-                {BUILTIN_DECKS.map((deck, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => loadBuiltinDeck(deck)}
-                    className="shrink-0 w-36 bg-white border-2 border-slate-200 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 hover:border-indigo-400 hover:shadow-md transition-all snap-center active:scale-95"
-                  >
-                    <span className="text-4xl mb-1">{deck.icon}</span>
-                    <span className="font-bold text-slate-700 text-base text-center leading-tight">{deck.title}</span>
-                    <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{deck.words.length}字</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 3. 巨集單字卡 */}
-            {words.length > 0 && (
-              <div className="w-full max-w-lg perspective-1000">
-                <div className="relative w-full h-[70vh] max-h-[42rem] min-h-[36rem] transition-transform duration-500 ease-out cursor-pointer" style={{ transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }} onClick={() => setIsFlipped(!isFlipped)}>
-                  {/* 正面 */}
-                  <div className="absolute inset-0 bg-white shadow-2xl rounded-[2.5rem] flex flex-col overflow-hidden border-2 border-slate-100" style={{ backfaceVisibility: 'hidden' }}>
-                    <div className="relative w-full h-[35%] min-h-[16rem] bg-slate-100 shrink-0">
-                      {currentWord.imagePrompt && <img src={`https://image.pollinations.ai/prompt/${encodeURIComponent(currentWord.imagePrompt)}?width=800&height=600&nologo=true`} alt="AI generated" className="w-full h-full object-cover" loading="lazy" onError={(e) => { e.target.style.display = 'none'; }} />}
-                      <div className="absolute inset-0 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
-                      <span className="absolute top-6 left-6 text-white font-bold tracking-widest text-lg uppercase drop-shadow-md">{currentIndex + 1} / {words.length}</span>
-                      <button onClick={(e) => toggleSaveWord(currentWord, e)} className="absolute top-6 right-6 text-white hover:text-amber-400 transition-colors z-10 p-3 drop-shadow-md">
-                        {isCurrentSaved ? <BookmarkCheck className="w-8 h-8 text-amber-400 fill-amber-400" /> : <Bookmark className="w-8 h-8" />}
-                      </button>
-                    </div>
-                    <div className="flex-1 flex flex-col items-center justify-center p-8 relative">
-                      <h2 className="text-[4rem] md:text-[5rem] font-black text-slate-800 mb-4 tracking-tighter text-center leading-tight break-words w-full">{currentWord.ko}</h2>
-                      <p className="text-slate-500 font-mono text-3xl mb-8 bg-slate-100 px-6 py-2 rounded-full font-bold">{currentWord.pro}</p>
-                      <button onClick={(e) => speak(currentWord.ko, e)} className="w-24 h-24 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center hover:bg-indigo-100 hover:scale-105 transition-all active:scale-95 group shrink-0 shadow-sm">
-                        <Play className="w-10 h-10 fill-current translate-x-1 group-hover:text-indigo-700" />
-                      </button>
-                      <p className="absolute bottom-6 text-slate-400 text-lg font-medium flex items-center gap-2"><RotateCcw className="w-5 h-5" /> 點擊卡片翻面</p>
-                    </div>
-                  </div>
-                  {/* 背面 */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 to-blue-800 shadow-2xl rounded-[2.5rem] flex flex-col p-10 text-white overflow-y-auto" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
-                    <div className="flex-1 flex flex-col justify-center">
-                      <div className="flex flex-col mb-8 border-b border-white/20 pb-6">
-                        <div className="flex flex-wrap items-end gap-3 mb-3">
-                          <h3 className="text-5xl font-bold text-white leading-tight">{currentWord.ko}</h3>
-                          <p className="text-indigo-200 text-2xl font-mono mb-1">{currentWord.pro}</p>
-                        </div>
-                        <h4 className="text-4xl font-bold text-amber-300 drop-shadow-sm">{currentWord.zh}</h4>
-                      </div>
-                      {currentWord.memoryHook && (
-                        <div className="bg-white/10 rounded-2xl p-6 mb-8 border border-white/20 shadow-inner">
-                          <p className="text-base text-indigo-200 uppercase tracking-wider mb-2 font-bold flex items-center gap-2">💡 意象化拆解</p>
-                          <p className="text-xl leading-relaxed font-medium">{currentWord.memoryHook}</p>
-                        </div>
-                      )}
-                      <div className="space-y-4">
-                        <p className="text-indigo-200 text-base uppercase tracking-wider font-bold">例句</p>
-                        <div className="flex items-start gap-3 bg-white/5 p-5 rounded-2xl border border-white/10">
-                          <div className="flex-1">
-                            <p className="text-2xl font-bold leading-relaxed mb-2">{currentWord.ex}</p>
-                            <p className="text-lg text-indigo-200/90 font-medium">{currentWord.exZh}</p>
-                          </div>
-                          <button onClick={(e) => speak(currentWord.ex, e)} className="shrink-0 text-indigo-300 hover:text-white transition-colors bg-white/10 p-3 rounded-full"><Play className="w-6 h-6 fill-current" /></button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+            {/* 首頁內容：只有題庫與輸入 */}
+            {view === 'home' && (
+              <div className="flex flex-col items-center animate-in fade-in slide-in-from-bottom-2 duration-300">
+                {/* 核心題庫 */}
+                <div className="w-full max-w-md mx-auto mb-6">
+                   <h3 className="text-sm font-black text-slate-500 mb-3 flex items-center gap-2 px-2">
+                     <BookOpen className="w-4 h-4 text-indigo-500"/> 核心題庫直接背
+                   </h3>
+                   <div className="flex gap-3 overflow-x-auto pb-4 custom-scrollbar snap-x px-2">
+                     {BUILTIN_DECKS.map((deck, idx) => (
+                       <button key={idx} onClick={() => loadBuiltinDeck(deck)} className="shrink-0 w-28 bg-white border-2 border-slate-100 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 hover:border-indigo-400 hover:shadow-md transition-all snap-center active:scale-95">
+                         <span className="text-4xl mb-1">{deck.icon}</span>
+                         <span className="font-black text-slate-700 text-sm text-center leading-tight">{deck.title}</span>
+                         <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{deck.words.length}字</span>
+                       </button>
+                     ))}
+                   </div>
                 </div>
-                <div className="flex items-center justify-between mt-10 px-6">
-                  <button onClick={prevCard} className="p-4 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-all bg-white shadow-sm border border-slate-100"><ChevronLeft className="w-10 h-10" /></button>
-                  <p className="text-slate-400 font-bold tracking-widest text-lg">SWIPE / CLICK</p>
-                  <button onClick={nextCard} className="p-4 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-all bg-white shadow-sm border border-slate-100"><ChevronRight className="w-10 h-10" /></button>
+
+                {/* 輸入主題 AI生成 */}
+                <div className="w-full max-w-md mx-auto mb-8 px-2">
+                   <h3 className="text-sm font-black text-slate-500 mb-3 flex items-center gap-2">
+                     <Sparkles className="w-4 h-4 text-indigo-500"/> 輸入主題 AI生成
+                   </h3>
+                   <div className="bg-white p-3 rounded-3xl shadow-sm border border-slate-200">
+                     <div className="flex bg-slate-100 p-1.5 rounded-2xl mb-3">
+                       <button onClick={() => setInputMode('topic')} className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${inputMode === 'topic' ? 'bg-white text-indigo-600 shadow-sm scale-100' : 'text-slate-500 hover:text-slate-700 scale-95'}`}>🎯 擴充主題</button>
+                       <button onClick={() => setInputMode('words')} className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all ${inputMode === 'words' ? 'bg-white text-indigo-600 shadow-sm scale-100' : 'text-slate-500 hover:text-slate-700 scale-95'}`}>✍️ 指定單字</button>
+                     </div>
+                     <div className="flex gap-2">
+                       <input value={topic} onChange={(e) => setTopic(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && generateWords()} placeholder={inputMode === 'topic' ? "輸入主題 (如: 咖啡廳點餐)" : "中英韓皆可 (如: 蘋果, water)"} className="flex-1 bg-slate-50 px-4 py-3.5 rounded-2xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                       <button onClick={generateWords} disabled={loading} className="bg-indigo-600 text-white px-6 rounded-2xl font-black text-sm hover:bg-indigo-700 active:scale-95 transition-all shadow-sm flex items-center justify-center">
+                         {loading ? <Loader2 className="w-5 h-5 animate-spin"/> : "生成"}
+                       </button>
+                     </div>
+                   </div>
+                   {errorMsg && <p className="text-red-500 text-xs font-bold mt-2 ml-2">{errorMsg}</p>}
                 </div>
               </div>
             )}
-          </div>
-        )}
 
-        {/* === 韓文基礎發音區 === */}
-        {view === 'alphabet' && (
-          <div className="max-w-4xl mx-auto pb-10">
-            <div className="mb-10 text-center">
-              <h2 className="text-4xl font-black text-slate-800 mb-4">韓文字母基礎</h2>
-              <p className="text-slate-500 text-lg leading-relaxed font-medium">依照方格子文章建議：先學母音、再學子音。搭配「注音」快速建立直覺！</p>
-            </div>
+            {/* 基礎發音區 */}
+            {view === 'alphabet' && (
+              <div className="max-w-4xl mx-auto pb-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="mb-10 text-center px-4">
+                  <p className="text-slate-500 text-sm md:text-base leading-relaxed font-bold">先學母音、再學子音。搭配「注音」建立直覺！</p>
+                </div>
 
-            <div className="mb-16">
-              <h3 className="text-2xl font-black text-amber-600 mb-6 flex items-center gap-3 border-b-4 border-amber-100 pb-3">
-                <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-xl text-lg">10個</span> 基本母音 (모음)
-              </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                {HANGUL_BASIC.vowels.map(item => (
-                  <div 
-                    key={item.ko} 
-                    onClick={() => { setActiveLetter(activeLetter === item.ko ? null : item.ko); speak(item.name); }} 
-                    className={`cursor-pointer min-h-[8rem] rounded-[1.5rem] border-2 transition-all duration-300 p-4 flex flex-col justify-center items-center shadow-sm ${activeLetter === item.ko ? 'border-amber-500 bg-amber-500 text-white scale-105 shadow-lg' : 'border-slate-200 bg-white hover:border-amber-400'}`}
-                  >
-                    {activeLetter === item.ko ? (
-                      <div className="flex flex-col items-center text-center animate-in fade-in zoom-in duration-200">
-                        <span className="text-2xl font-black mb-2">{item.ko}</span>
-                        <p className="text-sm font-medium leading-snug">{item.hook}</p>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center">
-                        <span className="text-5xl font-black text-slate-800 mb-3">{item.ko}</span>
-                        <div className="flex gap-2">
-                          <span className="text-sm font-mono font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md">{item.pro}</span>
-                          <span className="text-sm font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md">{item.bpmf}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="mb-16">
-              <h3 className="text-2xl font-black text-indigo-700 mb-6 flex flex-wrap items-center gap-3 border-b-4 border-indigo-100 pb-3">
-                <span className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-xl text-lg">14個</span> 
-                基本子音 (자음) 
-                <span className="text-base text-indigo-400 font-medium ml-auto">※ 語音搭配「ㅏ(a)」示範</span>
-              </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {HANGUL_BASIC.consonants.map(item => (
-                  <div 
-                    key={item.ko} 
-                    onClick={() => { setActiveLetter(activeLetter === item.ko ? null : item.ko); speak(item.tts); }} 
-                    className={`cursor-pointer min-h-[8rem] rounded-[1.5rem] border-2 transition-all duration-300 p-4 flex flex-col justify-center items-center shadow-sm ${activeLetter === item.ko ? 'border-indigo-500 bg-indigo-600 text-white scale-105 shadow-lg' : 'border-slate-200 bg-white hover:border-indigo-400'}`}
-                  >
-                    {activeLetter === item.ko ? (
-                      <div className="flex flex-col items-center text-center animate-in fade-in zoom-in duration-200">
-                        <span className="text-2xl font-black mb-2">{item.ko}</span>
-                        <p className="text-sm font-medium leading-snug">{item.hook.replace('象形：', '').split('。')[0]}</p>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center">
-                        <span className="text-5xl font-black text-slate-800 mb-3">{item.ko}</span>
-                        <div className="flex gap-2">
-                          <span className="text-sm font-mono font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md">{item.pro}</span>
-                          <span className="text-sm font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md">{item.bpmf}</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-200 p-6 md:p-10">
-              <div className="flex bg-slate-100 p-2 rounded-2xl max-w-md mx-auto mb-10">
-                <button onClick={() => setAlphabetMode('flashcards')} className={`flex-1 flex justify-center items-center gap-2 py-4 rounded-xl font-bold text-lg transition-all ${alphabetMode === 'flashcards' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>
-                  <Layers className="w-5 h-5" /> 140音字卡測驗
-                </button>
-                <button onClick={() => setAlphabetMode('manual')} className={`flex-1 flex justify-center items-center gap-2 py-4 rounded-xl font-bold text-lg transition-all ${alphabetMode === 'manual' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-500 hover:text-slate-700'}`}>
-                  <Puzzle className="w-5 h-5" /> 組合機
-                </button>
-              </div>
-
-              {alphabetMode === 'flashcards' && (
-                <div className="flex flex-col items-center">
-                  <div className="flex gap-4 mb-8">
-                    <button onClick={shuffleCombos} className="flex items-center gap-2 bg-indigo-50 text-indigo-600 px-6 py-3 rounded-xl font-bold text-lg hover:bg-indigo-100 transition-colors shadow-sm">
-                      <Shuffle className="w-5 h-5" /> 打亂洗牌
-                    </button>
-                    <button onClick={resetCombos} className="flex items-center gap-2 bg-slate-50 text-slate-600 px-6 py-3 rounded-xl font-bold text-lg hover:bg-slate-100 transition-colors shadow-sm border border-slate-200">
-                      <RefreshCw className="w-5 h-5" /> 重置順序
-                    </button>
-                  </div>
-
-                  <div className="w-full max-w-md perspective-1000 mb-10">
-                    <div className="relative w-full h-[28rem] min-h-[400px] transition-transform duration-500 ease-out cursor-pointer" style={{ transformStyle: 'preserve-3d', transform: comboFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }} onClick={() => setComboFlipped(!comboFlipped)}>
-                      <div className="absolute inset-0 bg-white shadow-2xl rounded-[3rem] flex flex-col items-center justify-center p-8 border-2 border-indigo-50" style={{ backfaceVisibility: 'hidden' }}>
-                        <span className="absolute top-6 left-6 text-slate-300 font-bold tracking-widest text-lg">{comboIndex + 1} / {comboCards.length}</span>
-                        <h2 className="text-[9rem] leading-none font-black text-slate-800 mb-4 drop-shadow-md">{currentCombo.ko}</h2>
-                        <div className="flex gap-3 mb-8">
-                          <span className="text-3xl font-mono text-slate-500 bg-slate-100 px-6 py-1.5 rounded-full font-bold">{currentCombo.pro}</span>
-                          <span className="text-3xl font-bold text-indigo-600 bg-indigo-50 px-6 py-1.5 rounded-full">{currentCombo.bpmf}</span>
-                        </div>
-                        <button onClick={(e) => speak(currentCombo.ko, e)} className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center hover:bg-indigo-100 transition-all hover:scale-105 active:scale-95 group shadow-sm">
-                          <Play className="w-10 h-10 fill-current translate-x-1 group-hover:text-indigo-700" />
-                        </button>
-                        <p className="absolute bottom-6 text-slate-400 text-base font-medium flex items-center gap-2"><RotateCcw className="w-5 h-5" /> 點擊翻面解說</p>
-                      </div>
-
-                      <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-blue-50 shadow-2xl rounded-[3rem] flex flex-col p-10 border-2 border-indigo-100 overflow-y-auto" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
-                        <div className="flex-1 flex flex-col items-center justify-center text-center">
-                          <p className="text-slate-500 font-bold mb-4 uppercase tracking-widest text-lg">對照與拼音</p>
-                          <div className="flex flex-col items-center justify-center gap-4 mb-10 bg-white px-10 py-6 rounded-[2rem] shadow-md border border-indigo-50 w-full">
-                            <span className="text-7xl font-black text-slate-800">{currentCombo.ko}</span>
-                            <div className="flex gap-4 items-center w-full justify-center border-t border-slate-100 pt-4">
-                              <span className="text-4xl font-bold text-indigo-600 font-mono">{currentCombo.pro}</span>
-                              <div className="h-8 w-1 bg-slate-200 rounded-full"></div>
-                              <span className="text-4xl font-bold text-amber-500">{currentCombo.bpmf}</span>
+                <div className="mb-16">
+                  <h3 className="text-xl font-black text-amber-600 mb-5 flex items-center gap-2 border-b-4 border-amber-100 pb-2 px-2">
+                    <span className="bg-amber-100 text-amber-700 px-2.5 py-1 rounded-xl text-sm">10個</span> 基本母音 (모음)
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 px-2">
+                    {HANGUL_BASIC.vowels.map(item => (
+                      <div key={item.ko} onClick={() => { setActiveLetter(activeLetter === item.ko ? null : item.ko); speak(item.name); }} className={`cursor-pointer min-h-[7rem] rounded-3xl border-2 transition-all duration-300 p-3 flex flex-col justify-center items-center shadow-sm ${activeLetter === item.ko ? 'border-amber-500 bg-amber-500 text-white scale-105 shadow-md' : 'border-slate-200 bg-white hover:border-amber-400'}`}>
+                        {activeLetter === item.ko ? (
+                          <div className="flex flex-col items-center text-center animate-in fade-in zoom-in duration-200">
+                            <span className="text-3xl font-black mb-2">{item.ko}</span>
+                            <p className="text-xs font-bold leading-snug">{item.hook}</p>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center">
+                            <span className="text-4xl font-black text-slate-800 mb-2">{item.ko}</span>
+                            <div className="flex gap-1.5 mt-1">
+                              <span className="text-xs font-mono font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md">{item.pro}</span>
+                              <span className="text-xs font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md">{item.bpmf}</span>
                             </div>
                           </div>
-                          
-                          <div className="w-full bg-white p-6 rounded-2xl shadow-sm text-left border border-indigo-50">
-                            <p className="text-sm text-indigo-500 font-black uppercase tracking-wider mb-4 border-b-2 border-indigo-50 pb-2">字根拆解</p>
-                            <div className="space-y-5">
-                              <p className="text-xl text-slate-700 font-medium leading-relaxed">
-                                <span className="font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg mr-3 shadow-sm">{currentCombo.c?.ko}</span> 
-                                {currentCombo.c?.hook.split('。')[1]}
-                              </p>
-                              <p className="text-xl text-slate-700 font-medium leading-relaxed">
-                                <span className="font-black text-amber-600 bg-amber-50 px-3 py-1 rounded-lg mr-3 shadow-sm">{currentCombo.v?.ko}</span> 
-                                {currentCombo.v?.hook.split('。')[0]}
-                              </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mb-16">
+                  <h3 className="text-xl font-black text-indigo-700 mb-5 flex flex-wrap items-center gap-2 border-b-4 border-indigo-100 pb-2 px-2">
+                    <span className="bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-xl text-sm">14個</span> 
+                    基本子音 (자음) 
+                    <span className="text-xs text-indigo-400 font-bold ml-auto">※ 語音搭配「ㅏ(a)」示範</span>
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 px-2">
+                    {HANGUL_BASIC.consonants.map(item => (
+                      <div key={item.ko} onClick={() => { setActiveLetter(activeLetter === item.ko ? null : item.ko); speak(item.tts); }} className={`cursor-pointer min-h-[7rem] rounded-3xl border-2 transition-all duration-300 p-3 flex flex-col justify-center items-center shadow-sm ${activeLetter === item.ko ? 'border-indigo-500 bg-indigo-600 text-white scale-105 shadow-md' : 'border-slate-200 bg-white hover:border-indigo-400'}`}>
+                        {activeLetter === item.ko ? (
+                          <div className="flex flex-col items-center text-center animate-in fade-in zoom-in duration-200">
+                            <span className="text-3xl font-black mb-2">{item.ko}</span>
+                            <p className="text-xs font-bold leading-snug">{item.hook.replace('象形：', '').split('。')[0]}</p>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center">
+                            <span className="text-4xl font-black text-slate-800 mb-2">{item.ko}</span>
+                            <div className="flex gap-1.5 mt-1">
+                              <span className="text-xs font-mono font-bold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-md">{item.pro}</span>
+                              <span className="text-xs font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-md">{item.bpmf}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-[2rem] shadow-sm border border-slate-200 p-5 md:p-8">
+                  <div className="flex bg-slate-100 p-1.5 rounded-2xl max-w-sm mx-auto mb-8">
+                    <button onClick={() => setAlphabetMode('flashcards')} className={`flex-1 flex justify-center items-center gap-2 py-3 rounded-xl font-bold text-sm transition-all ${alphabetMode === 'flashcards' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                      <Layers className="w-4 h-4" /> 140音字卡
+                    </button>
+                    <button onClick={() => setAlphabetMode('manual')} className={`flex-1 flex justify-center items-center gap-2 py-3 rounded-xl font-bold text-sm transition-all ${alphabetMode === 'manual' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                      <Puzzle className="w-4 h-4" /> 組合機
+                    </button>
+                  </div>
+
+                  {alphabetMode === 'flashcards' && (
+                    <div className="flex flex-col items-center">
+                      <div className="flex gap-3 mb-6">
+                        <button onClick={shuffleCombos} className="flex items-center gap-2 bg-indigo-50 text-indigo-600 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-indigo-100 transition-colors shadow-sm">
+                          <Shuffle className="w-4 h-4" /> 打亂洗牌
+                        </button>
+                        <button onClick={resetCombos} className="flex items-center gap-2 bg-slate-50 text-slate-600 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-100 transition-colors shadow-sm border border-slate-200">
+                          <RefreshCw className="w-4 h-4" /> 重置順序
+                        </button>
+                      </div>
+
+                      <div className="w-full max-w-sm perspective-1000 mb-8">
+                        <div 
+                          className="relative w-full h-[24rem] transition-transform duration-500 ease-out cursor-pointer" 
+                          style={{ transformStyle: 'preserve-3d', transform: comboFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }} 
+                          // 🔥 基礎發音區的 140 音字卡，也加入防誤觸轉回的設定 🔥
+                          onClick={() => { if (!comboFlipped) setComboFlipped(true); }}
+                        >
+                          <div className="absolute inset-0 bg-white shadow-xl rounded-[2.5rem] flex flex-col items-center justify-center p-6 border-2 border-indigo-50" style={{ backfaceVisibility: 'hidden' }}>
+                            <span className="absolute top-5 left-5 text-slate-300 font-black tracking-widest text-sm">{comboIndex + 1} / {comboCards.length}</span>
+                            <h2 className="text-[8rem] leading-none font-black text-slate-800 mb-4 drop-shadow-sm">{currentCombo.ko}</h2>
+                            <div className="flex gap-2 mb-6">
+                              <span className="text-2xl font-mono text-slate-500 bg-slate-100 px-5 py-1 rounded-full font-bold">{currentCombo.pro}</span>
+                              <span className="text-2xl font-bold text-indigo-600 bg-indigo-50 px-5 py-1 rounded-full">{currentCombo.bpmf}</span>
+                            </div>
+                            <button onClick={(e) => speak(currentCombo.ko, e)} className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center hover:bg-indigo-100 transition-all hover:scale-105 active:scale-95 shadow-sm">
+                              <Play className="w-8 h-8 fill-current translate-x-1" />
+                            </button>
+                          </div>
+
+                          <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-blue-50 shadow-xl rounded-[2.5rem] flex flex-col p-8 border-2 border-indigo-100 overflow-y-auto" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
+                            <div className="flex-1 flex flex-col items-center justify-center text-center">
+                              <div className="flex flex-col items-center justify-center gap-3 mb-6 bg-white px-8 py-5 rounded-[2rem] shadow-sm border border-indigo-50 w-full relative">
+                                {/* 🔥 基礎發音區：背面也加上獨立喇叭按鈕 🔥 */}
+                                <button onClick={(e) => speak(currentCombo.ko, e)} className="absolute top-3 right-3 bg-indigo-50 hover:bg-indigo-100 p-2.5 rounded-full transition-colors active:scale-95 text-indigo-600">
+                                  <Volume2 className="w-5 h-5 text-indigo-600" />
+                                </button>
+                                <span className="text-6xl font-black text-slate-800">{currentCombo.ko}</span>
+                                <div className="flex gap-3 items-center w-full justify-center border-t border-slate-100 pt-3 mt-1">
+                                  <span className="text-3xl font-bold text-indigo-600 font-mono">{currentCombo.pro}</span>
+                                  <div className="h-6 w-1 bg-slate-200 rounded-full"></div>
+                                  <span className="text-3xl font-bold text-amber-500">{currentCombo.bpmf}</span>
+                                </div>
+                              </div>
+                              
+                              <div className="w-full bg-white p-5 rounded-2xl shadow-sm text-left border border-indigo-50">
+                                <p className="text-xs text-indigo-500 font-black uppercase tracking-wider mb-3 border-b-2 border-indigo-50 pb-1.5">字根拆解</p>
+                                <div className="space-y-4">
+                                  <p className="text-base text-slate-700 font-bold leading-relaxed">
+                                    <span className="font-black text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-lg mr-2">{currentCombo.c?.ko}</span> 
+                                    {currentCombo.c?.hook.split('。')[1]}
+                                  </p>
+                                  <p className="text-base text-slate-700 font-bold leading-relaxed">
+                                    <span className="font-black text-amber-600 bg-amber-50 px-2.5 py-0.5 rounded-lg mr-2">{currentCombo.v?.ko}</span> 
+                                    {currentCombo.v?.hook.split('。')[0]}
+                                  </p>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
+
+                      <div className="flex items-center justify-between w-full max-w-sm px-2">
+                        <button onClick={prevCombo} className="p-4 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-all bg-white shadow-sm border border-slate-100 active:scale-95"><ChevronLeft className="w-8 h-8" /></button>
+                        <button onClick={nextCombo} className="p-4 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-all bg-white shadow-sm border border-slate-100 active:scale-95"><ChevronRight className="w-8 h-8" /></button>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  <div className="flex items-center justify-between w-full max-w-md px-4">
-                    <button onClick={prevCombo} className="p-5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-all bg-white shadow-sm border border-slate-100"><ChevronLeft className="w-10 h-10" /></button>
-                    <button onClick={nextCombo} className="p-5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-all bg-white shadow-sm border border-slate-100"><ChevronRight className="w-10 h-10" /></button>
-                  </div>
-                </div>
-              )}
+                  {alphabetMode === 'manual' && (
+                    <div className="grid grid-cols-1 gap-10 items-center bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
+                      <div className="flex flex-col items-center justify-center">
+                        {selectedC && selectedV && (
+                          <div className="flex flex-col items-center bg-white p-8 rounded-[2.5rem] shadow-xl border-4 border-indigo-50 w-full">
+                            <div className="flex items-center gap-3 text-3xl font-black text-slate-300 mb-6">
+                              <span className="text-indigo-500">{selectedC.ko}</span><span>+</span><span className="text-amber-500">{selectedV.ko}</span><span>=</span>
+                            </div>
+                            <span className="text-[8rem] leading-none font-black text-slate-800 mb-5 drop-shadow-md tracking-tighter">{combineHangul(selectedC.ko, selectedV.ko)}</span>
+                            <div className="flex gap-3 mb-6">
+                              <span className="text-3xl font-mono text-slate-500 bg-slate-100 px-5 py-1.5 rounded-full font-bold">{selectedC.pro.split('/')[0]}{selectedV.pro}</span>
+                              <span className="text-3xl font-bold text-indigo-600 bg-indigo-50 px-5 py-1.5 rounded-full">{(selectedC.bpmf.split('/')[0] === '無' ? '' : selectedC.bpmf.split('/')[0]) + selectedV.bpmf.split(' ')[0]}</span>
+                            </div>
+                            <button onClick={() => speak(combineHangul(selectedC.ko, selectedV.ko))} className="flex items-center gap-2 bg-indigo-600 text-white px-8 py-4 rounded-full font-black text-lg hover:bg-indigo-700 transition-all shadow-md active:scale-95">
+                              <Play className="w-6 h-6 fill-current" /> 聽發音
+                            </button>
+                          </div>
+                        )}
+                      </div>
 
-              {alphabetMode === 'manual' && (
-                <div className="grid grid-cols-1 gap-12 items-center bg-slate-50 p-8 rounded-[2rem] border border-slate-100">
-                  <div className="flex flex-col items-center justify-center">
-                    {selectedC && selectedV && (
-                      <div className="flex flex-col items-center bg-white p-10 rounded-[3rem] shadow-xl border-4 border-indigo-50 w-full">
-                        <div className="flex items-center gap-4 text-4xl font-black text-slate-300 mb-8">
-                          <span className="text-indigo-500">{selectedC.ko}</span><span>+</span><span className="text-amber-500">{selectedV.ko}</span><span>=</span>
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <h4 className="font-black text-indigo-700 text-center text-sm uppercase tracking-wider mb-3 border-b-2 border-indigo-100 pb-1.5">1. 子音</h4>
+                          <div className="flex flex-wrap justify-center gap-2">
+                            {HANGUL_BASIC.consonants.map(c => (
+                              <button key={c.ko} onClick={() => setSelectedC(c)} className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl font-black text-xl transition-all flex flex-col justify-center items-center gap-0.5 ${selectedC?.ko === c.ko ? 'bg-indigo-600 text-white shadow-lg scale-110' : 'bg-white text-slate-600 border-2 border-slate-200 hover:border-indigo-400 hover:text-indigo-600'}`}>
+                                <span>{c.ko}</span>
+                                <span className="text-[9px] font-bold opacity-80">{c.bpmf.split('/')[0]}</span>
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                        <span className="text-[10rem] leading-none font-black text-slate-800 mb-6 drop-shadow-md tracking-tighter">{combineHangul(selectedC.ko, selectedV.ko)}</span>
-                        <div className="flex gap-4 mb-8">
-                          <span className="text-4xl font-mono text-slate-500 bg-slate-100 px-6 py-2 rounded-full font-bold">{selectedC.pro.split('/')[0]}{selectedV.pro}</span>
-                          <span className="text-4xl font-bold text-indigo-600 bg-indigo-50 px-6 py-2 rounded-full">{(selectedC.bpmf.split('/')[0] === '無' ? '' : selectedC.bpmf.split('/')[0]) + selectedV.bpmf.split(' ')[0]}</span>
+
+                        <div className="space-y-3">
+                          <h4 className="font-black text-amber-600 text-center text-sm uppercase tracking-wider mb-3 border-b-2 border-amber-100 pb-1.5">2. 母音</h4>
+                          <div className="flex flex-wrap justify-center gap-2">
+                            {HANGUL_BASIC.vowels.map(v => (
+                              <button key={v.ko} onClick={() => setSelectedV(v)} className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl font-black text-xl transition-all flex flex-col justify-center items-center gap-0.5 ${selectedV?.ko === v.ko ? 'bg-amber-500 text-white shadow-lg scale-110' : 'bg-white text-slate-600 border-2 border-slate-200 hover:border-amber-400 hover:text-amber-600'}`}>
+                                <span>{v.ko}</span>
+                                <span className="text-[9px] font-bold opacity-80">{v.bpmf.split(' ')[0]}</span>
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                        <button onClick={() => speak(combineHangul(selectedC.ko, selectedV.ko))} className="flex items-center gap-3 bg-indigo-600 text-white px-10 py-5 rounded-full font-black text-xl hover:bg-indigo-700 transition-all shadow-lg active:scale-95">
-                          <Play className="w-7 h-7 fill-current" /> 聽發音
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-8">
-                    <div className="space-y-4">
-                      <h4 className="font-black text-indigo-700 text-center text-lg uppercase tracking-wider mb-4 border-b-2 border-indigo-100 pb-2">1. 選擇子音</h4>
-                      <div className="flex flex-wrap justify-center gap-3">
-                        {HANGUL_BASIC.consonants.map(c => (
-                          <button key={c.ko} onClick={() => setSelectedC(c)} className={`w-14 h-14 md:w-16 md:h-16 rounded-2xl font-black text-2xl transition-all flex flex-col justify-center items-center gap-1 ${selectedC?.ko === c.ko ? 'bg-indigo-600 text-white shadow-lg scale-110' : 'bg-white text-slate-600 border-2 border-slate-200 hover:border-indigo-400 hover:text-indigo-600'}`}>
-                            <span>{c.ko}</span>
-                            <span className="text-[10px] font-normal opacity-80">{c.bpmf.split('/')[0]}</span>
-                          </button>
-                        ))}
                       </div>
                     </div>
-
-                    <div className="space-y-4">
-                      <h4 className="font-black text-amber-600 text-center text-lg uppercase tracking-wider mb-4 border-b-2 border-amber-100 pb-2">2. 選擇母音</h4>
-                      <div className="flex flex-wrap justify-center gap-3">
-                        {HANGUL_BASIC.vowels.map(v => (
-                          <button key={v.ko} onClick={() => setSelectedV(v)} className={`w-14 h-14 md:w-16 md:h-16 rounded-2xl font-black text-2xl transition-all flex flex-col justify-center items-center gap-1 ${selectedV?.ko === v.ko ? 'bg-amber-500 text-white shadow-lg scale-110' : 'bg-white text-slate-600 border-2 border-slate-200 hover:border-amber-400 hover:text-amber-600'}`}>
-                            <span>{v.ko}</span>
-                            <span className="text-[10px] font-normal opacity-80">{v.bpmf.split(' ')[0]}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* === 單字庫 === */}
-        {view === 'vault' && (
-          <div className="max-w-3xl mx-auto">
-            <h2 className="text-3xl font-black mb-8 flex items-center gap-3 text-slate-800">
-              <Library className="w-8 h-8 text-indigo-600" /> 我的單字庫
-            </h2>
-            
-            {savedWords.length === 0 ? (
-              <div className="text-center py-24 bg-white rounded-[2rem] border-2 border-slate-200 border-dashed">
-                <Bookmark className="w-16 h-16 text-slate-300 mx-auto mb-6" />
-                <p className="text-slate-500 font-bold text-xl mb-2">單字庫空空如也！</p>
-                <button onClick={() => setView('learn')} className="mt-8 px-8 py-4 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-lg hover:bg-indigo-100 transition-colors shadow-sm">
-                  去背單字
-                </button>
-              </div>
-            ) : (
-              <div className="bg-white rounded-[2rem] shadow-md border border-slate-200 overflow-hidden">
-                <div className="grid grid-cols-2 bg-slate-50 border-b-2 border-slate-200 text-base font-bold text-slate-500 uppercase tracking-wider p-6">
-                  <div>韓文 & 拼音</div>
-                  <div>中文意思 (可遮擋測驗)</div>
-                </div>
-                <div className="divide-y-2 divide-slate-100">
-                  {savedWords.map((word) => (
-                    <div key={word.id} className="grid grid-cols-2 p-6 items-center hover:bg-indigo-50/50 transition-colors group">
-                      <div className="pr-6 border-r-2 border-slate-100">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="text-3xl font-black text-slate-800">{word.ko}</span>
-                          <button onClick={() => speak(word.ko)} className="text-indigo-400 hover:text-indigo-600 transition-colors bg-indigo-50 p-2 rounded-full"><Play className="w-5 h-5 fill-current" /></button>
-                        </div>
-                        <span className="text-lg text-slate-500 font-mono font-bold bg-slate-100 px-3 py-1 rounded-lg">{word.pro}</span>
-                      </div>
-                      <div className="pl-6 relative flex items-center justify-between">
-                        <span className="text-2xl font-bold text-slate-700">{word.zh}</span>
-                        <button onClick={() => toggleSaveWord(word)} className="text-slate-300 hover:text-red-500 transition-colors p-3 bg-slate-50 rounded-full"><BookmarkCheck className="w-7 h-7 text-amber-500 hover:text-slate-300" /></button>
-                      </div>
-                    </div>
-                  ))}
+                  )}
                 </div>
               </div>
             )}
-          </div>
-        )}
-      </main>
+
+            {/* 🌟 最底部標記區 🌟 */}
+            <div className="w-full text-center mt-12 pb-6 text-sm font-black tracking-widest text-slate-400">
+               forJessie byKC <span className="opacity-80 ml-1 text-indigo-400">v1.3</span>
+            </div>
+          </main>
+        </>
+      )}
+
     </div>
   );
 }
